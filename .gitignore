@@ -7,7 +7,7 @@ node_modules
 .cdk.staging
 cdk.out
 
-
+**/.DS_Store
 # Ignore everything in the resources folder
 /resources/*
 # But don't ignore aaa.txt
