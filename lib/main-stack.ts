@@ -9,78 +9,74 @@ import { QuantumWorkerCluster } from './quantum-worker/quantum-worker-cluster';
 import { QuantumWorkerRepository } from './quantum-worker/quantum-worker-repositoy';
 import { QuantumDashboard } from './quantum-dashboard/quantum-dashboard';
 import { QuantumWorkerRepositoryUpdate } from './quantum-worker/quantum-worker-repository-update';
+import { QuantumServerConfig } from './config/cli-config';
+import { CDKQuantumServerConfig } from './config/cdk-config';
+import { Dashboard } from 'aws-cdk-lib/aws-cloudwatch';
 
 
-export interface QuantumServerStackProps extends cdk.StackProps {
-  stackConfig: {
-    stackName: string;
-    vpcCidr: string;
-    quantumServerPort: number;
-    containerCpu: number;
-    containerMemoryLimitMiB: number;
-    desiredContainerCount: number;
-  };
-}
 
 export class QuantumServerInfrastructure extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: QuantumServerStackProps) {
+  constructor(scope: Construct, id: string, props: CDKQuantumServerConfig) {
     super(scope, id, props);
 
     const vpcConstruct = new VpcConstruct(this, 'VpcConstruct', {
-      stackName: props.stackConfig.stackName,
-      vpcCidr: props.stackConfig.vpcCidr,
-      quantumServerPort: props.stackConfig.quantumServerPort
+      stackName: props.stackName,
+      vpcCidr: props.vpc.vpcCidr,
+      quantumServerPort: props.clientService.port
     });
 
-    // const redis = new RedisConstruct(this, 'RedisConstruct', {
-    //   vpc: vpcConstruct.vpc,
-    // });
+    const redis = new RedisConstruct(this, 'RedisConstruct', {
+      vpc: vpcConstruct.vpc,
+    });
 
-    // redis.node.addDependency(vpcConstruct);
+    redis.node.addDependency(vpcConstruct);
 
 
     const quantumDashboard = new QuantumDashboard(this, 'dashboard', {
-      // redisEndpoint: redis.redisEndpoint,
-      // redisPort: redis.redisPort,
-      stackName: props.stackConfig.stackName,
+      redisEndpoint: redis.redisEndpoint,
+      redisPort: redis.redisPort,
+      stackName: props.stackName,
       vpc: vpcConstruct.vpc,
     })
 
-    // const quantumServerCluster = new QuantumServerCluster(this, 'QuantumServerCluster', {
-    //   stackName: props.stackConfig.stackName,
-    //   vpc: vpcConstruct.vpc,
-    //   securityGroup: vpcConstruct.securityGroup,
-    //   quantumServerPort: props.stackConfig.quantumServerPort,
-    //   containerCpu: props.stackConfig.containerCpu,
-    //   containerMemoryLimitMiB: props.stackConfig.containerMemoryLimitMiB,
-    //   desiredContainerCount: props.stackConfig.desiredContainerCount,
-    //   redisEndpoint: redis.redisEndpoint,
-    //   redisPort: redis.redisPort
-    // });
-    // quantumServerCluster.node.addDependency(redis);
+    const quantumServerClientServiceCluster = new QuantumServerClientServiceCluster(this, 'QuantumServerClientServiceCluster', {
+      stackName: props.stackName,
+      vpc: vpcConstruct.vpc,
+      securityGroup: vpcConstruct.securityGroup,
+      quantumServerPort: props.clientService.port,
+      containerCpu: props.clientService.containerCpu,
+      containerMemoryLimitMiB: props.clientService.containerMemoryLimitMiB,
+      desiredContainerCount: props.clientService.desiredContainerCount,
+      redisEndpoint: redis.redisEndpoint,
+      redisPort: redis.redisPort
+    });
+    quantumServerClientServiceCluster.node.addDependency(redis);
 
-    // const quantumWorkerCluster = new QuantumWorkerCluster(this, 'QuantumWorkerCluster', {
-    //   stackName: props.stackConfig.stackName,
-    //   vpc: vpcConstruct.vpc,
-    //   containerCpu: props.stackConfig.containerCpu,
-    //   containerMemoryLimitMiB: props.stackConfig.containerMemoryLimitMiB,
-    //   desiredContainerCount: props.stackConfig.desiredContainerCount,
-    //   redisEndpoint: redis.redisEndpoint,
-    //   redisPort: redis.redisPort,
-    //   gameBuildBucket: quantumDashboard.gameBuildBucket
-    // });
-    // quantumWorkerCluster.node.addDependency(redis);
+    const quantumWorkerCluster = new QuantumWorkerCluster(this, 'QuantumWorkerCluster', {
+      stackName: props.stackName,
+      vpc: vpcConstruct.vpc,
+      containerCpu: props.workerService.containerCpu,
+      containerMemoryLimitMiB: props.workerService.containerMemoryLimitMiB,
+      desiredContainerCount: props.workerService.desiredContainerCount,
+      redisEndpoint: redis.redisEndpoint,
+      redisPort: redis.redisPort,
+      gameBuildBucket: quantumDashboard.gameBuildBucket
+    });
+    quantumWorkerCluster.node.addDependency(redis);
 
-    // const quantumServerLoadBalancer = new QuantumServerLoadBalancer(this, 'QuantumServerLoadBalancer', {
-    //   stackName: props.stackConfig.stackName,
-    //   clusterService: quantumServerCluster.clusterService,
-    //   containerDefinition: quantumServerCluster.container,
-    //   vpc: vpcConstruct.vpc,
-    //   quantumServerPort: props.stackConfig.quantumServerPort
-    // });
+    const quantumServerLoadBalancer = new QuantumServerClientServiceLoadBalancer(this, 'QuantumServerClientServiceLoadBalancer', {
+      stackName: props.stackName,
+      clusterService: quantumServerClientServiceCluster.clusterService,
+      containerDefinition: quantumServerClientServiceCluster.container,
+      vpc: vpcConstruct.vpc,
+      quantumServerPort: props.clientService.port
+    });
 
-    // new cdk.CfnOutput(this, "NlbDns", {
-    //   value: quantumServerLoadBalancer.nlb.loadBalancerDnsName,
-    // });
+    new cdk.CfnOutput(this, "load-balancer", {
+      value: quantumServerLoadBalancer.nlb.loadBalancerDnsName,
+    });
+    new cdk.CfnOutput(this, "dashboard-url", {
+      value: quantumDashboard.cloudfrontDistribution.domainName
+    });
   }
 }

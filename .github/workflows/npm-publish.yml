@@ -1,0 +1,36 @@
+name: Publish NPM package
+on:
+  push:
+    branches:
+      - main
+jobs:
+  download-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Download backend
+        run: |
+          curl -L -o ./resources/quantum-server-infrastructure-dashboard-backend.zip "https://quantum-server-file-storage.s3.amazonaws.com/quantum-server-infrastructure-dashboard-backend.zip"
+
+      - name: Download frontend
+        run: |
+          curl -L -o ./resources/quantum-server-infrastructure-dashboard-frontend.zip "https://quantum-server-file-storage.s3.amazonaws.com/quantum-server-infrastructure-dashboard-frontend.zip"
+      
+      - name: Increment patch version
+        run: |
+          npm version patch
+      
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: |
+          cd ./your-specific-location
+          npm publish --access public

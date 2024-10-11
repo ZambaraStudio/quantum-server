@@ -6,3 +6,9 @@ node_modules
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+
+# Ignore everything in the resources folder
+/resources/*
+# But don't ignore aaa.txt
+!/resources/readme.txt

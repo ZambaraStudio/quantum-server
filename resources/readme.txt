@@ -1,0 +1,1 @@
+This folder is used for the zipped versions of quantum dashboard and quantum api

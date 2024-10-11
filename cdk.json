@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/cdk-new.ts",
+  "app": "npx ts-node --prefer-ts-exts bin/quantum.ts",
   "watch": {
     "include": [
       "**"

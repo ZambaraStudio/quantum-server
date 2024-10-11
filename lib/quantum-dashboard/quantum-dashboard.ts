@@ -18,27 +18,16 @@ import {
 
 export interface QuantumServerClusterProps {
   stackName: string;
-  //redisEndpoint: string;
-  //redisPort: number;
+  redisEndpoint: string;
+  redisPort: number;
   vpc: ec2.Vpc;
 }
 
 export class QuantumDashboard extends Construct {
   public readonly gameBuildBucket: s3.Bucket;
+  public readonly cloudfrontDistribution: cloudfront.Distribution;
   constructor(scope: Construct, id: string, props: QuantumServerClusterProps) {
     super(scope, id);
-
-    const quantumServerFileStorage = s3.Bucket.fromBucketAttributes(
-      this,
-      "ExistingBucket",
-      {
-
-        bucketName: "quantum-server-file-storage",
-        // Optionally specify the bucket region here if needed
-        bucketRegionalDomainName: 'quantum-server-file-storage.s3.us-east-1.amazonaws.com'
-      }
-      
-    );
 
     const dashboardBucket = new s3.Bucket(this, `${props?.stackName}-DashboardBucket`, {
       publicReadAccess: true,
@@ -59,19 +48,11 @@ export class QuantumDashboard extends Construct {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
     });
 
-      // Create an S3 VPC Endpoint
-      const s3Endpoint = new ec2.GatewayVpcEndpoint(this, 'S3VpcEndpoint', {
-        vpc: props.vpc,
-        service: ec2.GatewayVpcEndpointAwsService.S3,
-      });
-
-
     const bucketDeployment = new s3deploy.BucketDeployment(this, "DeployDashboard", {
       sources: [
-        s3deploy.Source.bucket(
-          quantumServerFileStorage,
-          "quantum-server-infranstucture-dashboard-frontend.zip"
-        ),
+        s3deploy.Source.asset("resources/quantum-server-infrastructure-dashboard-frontend.zip", {
+
+        }),
       ],
       destinationBucket: dashboardBucket,
       extract: true,
@@ -83,10 +64,7 @@ export class QuantumDashboard extends Construct {
       runtime: lambda.Runtime.NODEJS_20_X,
       timeout: cdk.Duration.minutes(1),
       allowPublicSubnet: true,
-      code: lambda.Code.fromBucket(
-        quantumServerFileStorage,
-        "quantum-server-infranstucture-dashboard-backend.zip"
-      ),
+      code: lambda.Code.fromAsset("resources/quantum-server-infrastructure-dashboard-backend.zip"),
       handler: "dist/index.handler",
       environment: {
         USER_EMAIL: "a",
@@ -170,7 +148,7 @@ export class QuantumDashboard extends Construct {
     lambdaInvoke.node.addDependency(bucketDeployment)
 
 
-    const distribution = new cloudfront.Distribution(
+    this.cloudfrontDistribution = new cloudfront.Distribution(
       this,
       "ReactAppDistribution",
       {
@@ -191,15 +169,6 @@ export class QuantumDashboard extends Construct {
       }
     );
 
-    distribution.node.addDependency(lambdaInvoke);
-
-
-
-    new cdk.CfnOutput(this, "CloudFront", {
-      value: distribution.distributionDomainName,
-    });
-    new cdk.CfnOutput(this, "Bucket", {
-      value: dashboardBucket.bucketDomainName,
-    });
+    this.cloudfrontDistribution.node.addDependency(lambdaInvoke);
   }
 }
