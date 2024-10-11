@@ -23,14 +23,29 @@ jobs:
       - name: Download frontend
         run: |
           curl -L -o ./resources/quantum-server-infrastructure-dashboard-frontend.zip "https://quantum-server-file-storage.s3.amazonaws.com/quantum-server-infrastructure-dashboard-frontend.zip"
+      - name: Configure Git
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
       
       - name: Increment patch version
         run: |
           npm version patch
-      
+
+      - name: Commit version bump
+        run: |
+          git push --follow-tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check NPM Authentication
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: |
+          npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_PUBLISH_TOKEN }}
+          npm whoami
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
         run: |
-          cd ./your-specific-location
+          npm whoami
           npm publish --access public
