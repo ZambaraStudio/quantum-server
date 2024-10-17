@@ -7,17 +7,6 @@ import { QuantumServerConfig } from '../lib/config/cli-config';
 import { CDKQuantumServerConfig, defaultCDKQuantumServerConfig } from '../lib/config/cdk-config';
 
 
-// export interface QuantumServerStackProps extends cdk.StackProps {
-//   stackConfig: {
-//     stackName: string;
-//     vpcCidr: string;
-//     quantumServerPort: number;
-//     containerCpu: number;
-//     containerMemoryLimitMiB: number;
-//     desiredContainerCount: number;
-//   };
-// }
-
 
 const app = new cdk.App({
   

@@ -6,6 +6,7 @@ import { Construct } from "constructs";
 import { BucketAccessControl } from "aws-cdk-lib/aws-s3";
 import * as customResources from "aws-cdk-lib/custom-resources";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
+import { v4 as uuidv4 } from "uuid";
 
 
 import {
@@ -118,6 +119,7 @@ export class QuantumDashboard extends Construct {
     apiGateway.root.addMethod("GET", new apigateway.LambdaIntegration(apiLambda));
     apiGateway.root.addMethod("POST", new apigateway.LambdaIntegration(apiLambda));
 
+
     // Upload API URL
     const apiUrlLambda = new lambda.Function(this, `${props?.stackName}-ApiUrlLambda`, {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -137,12 +139,17 @@ export class QuantumDashboard extends Construct {
       "InvokeApiUrlLambdaProvider",
       {
         onEventHandler: apiUrlLambda,
+        
       }
     );
 
     // Define a custom resource that invokes the Lambda on deployment
     const lambdaInvoke = new cdk.CustomResource(this, "InvokeApiUrlLambda", {
       serviceToken: invokeApiUrlLambda.serviceToken,
+      properties: {
+        // This property changes on each deployment, triggering the custom resource
+        NEEDED_FOR_UPDATE_INVOCATION: uuidv4(),
+      },
     });
 
     lambdaInvoke.node.addDependency(bucketDeployment)
