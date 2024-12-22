@@ -147,17 +147,27 @@ export class QuantumServerClientServiceLoadBalancer extends Construct {
     const certificateArn =
       generateCertificateCustomResource.getResponseField("Payload");
 
-      const listener = this.nlb.addListener("MyTlsListener", {
+      const listenerHttps = this.nlb.addListener("MyTlsListener", {
         port: 443,
         protocol: Protocol.TLS, // TLS protocol
         certificates: [elbv2.ListenerCertificate.fromArn(cdk.Fn.select(1, cdk.Fn.split('"', certificateArn)))],
       });
+      const listenerHttp = this.nlb.addListener("MyTcpListener", {
+        port: 80,
+        protocol: Protocol.TCP, // TLS protocol
+      });
   
       // Ensure the listener waits for the certificate creation
-      listener.node.addDependency(generateCertificateCustomResource);
+      listenerHttps.node.addDependency(generateCertificateCustomResource);
   
       // Attach the ECS service as the target group for the listener
-      listener.addTargets("EcsTargets", {
+      listenerHttps.addTargets("EcsTargetsTLS", {
+        protocol: Protocol.TCP,
+        port: props.quantumServerPort, // The port the service listens on
+        targets: [props.clusterService.loadBalancerTarget(props.containerDefinition)],
+      });
+
+      listenerHttp.addTargets("EcsTargetsTCP", {
         protocol: Protocol.TCP,
         port: props.quantumServerPort, // The port the service listens on
         targets: [props.clusterService.loadBalancerTarget(props.containerDefinition)],

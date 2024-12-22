@@ -13,6 +13,7 @@ import {
   aws_events as events,
   aws_events_targets as eventTargets,
 } from "aws-cdk-lib";
+import { QuantumServerCustomUtilsConstruct } from "../custom-utils/custom-utils";
 export interface QuantumServerClusterProps {
   stackName: string;
   vpc: ec2.Vpc;
@@ -23,6 +24,7 @@ export interface QuantumServerClusterProps {
   desiredContainerCount: number;
   redisEndpoint: string;
   redisPort: number;
+  quantumServerCustomUtilsConstruct: QuantumServerCustomUtilsConstruct;
 }
 
 export class QuantumServerClientServiceCluster extends Construct {
@@ -66,6 +68,8 @@ export class QuantumServerClientServiceCluster extends Construct {
           REDIS_HOST: props.redisEndpoint,
           REDIS_PORT: props.redisPort.toString(),
           API_PORT: props.quantumServerPort.toString(),
+          AUTHENTICATION_LAMBDA_ARN: props.quantumServerCustomUtilsConstruct.utilLambdas["userAuthenticationLambda"].functionArn
+
         },
         logging: ecs.LogDrivers.awsLogs({
           streamPrefix: `${props.stackName}`,

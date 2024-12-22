@@ -42,7 +42,7 @@ export class QuantumWorkerCluster extends Construct {
       {
         logGroupName: `/ecs/${props.stackName}-WorkerLogGroup`,
         retention: logs.RetentionDays.ONE_WEEK, // Customize the retention period as needed
-        removalPolicy: cdk.RemovalPolicy.DESTROY, // Automatically remove logs when stack is deleted (optional)
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
       }
     );
     const cluster = new ecs.Cluster(
@@ -54,6 +54,19 @@ export class QuantumWorkerCluster extends Construct {
       }
     );
 
+
+    const taskRole = new iam.Role(this, 'TaskRole', {
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+    });
+    
+    taskRole.addToPolicy(new iam.PolicyStatement({
+      actions: [
+        'logs:CreateLogStream',
+        'logs:PutLogEvents',
+      ],
+      resources: [logGroup.logGroupArn],
+    }));
+
     // Define the task definition
     const taskDefinition = new ecs.FargateTaskDefinition(
       this,
@@ -61,6 +74,7 @@ export class QuantumWorkerCluster extends Construct {
       {
         cpu: props.containerCpu,
         memoryLimitMiB: props.containerMemoryLimitMiB,
+        taskRole
       }
     );
 

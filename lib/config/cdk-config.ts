@@ -1,4 +1,6 @@
-import * as cdk from "aws-cdk-lib";
+import {
+  aws_lambda as lambda,
+} from "aws-cdk-lib";
 import {
   QuantumServerConfig,
   QuantumServerClientServiceConfig,
@@ -39,5 +41,13 @@ export const defaultCDKQuantumServerConfig: CDKQuantumServerConfig = {
     containerCpu: 256,
     containerMemoryLimitMiB: 512,
     desiredContainerCount: 1,
+  },
+  customUtils: {
+    userAuthenticationLambda: {
+      codePath: `${__dirname}/../../lambda/user-authentication`,
+      lambdaName: "userAuthenticationLambda",
+      runtime: lambda.Runtime.NODEJS_20_X,
+      timeout: 10
+    }
   }
 };
